@@ -53,7 +53,6 @@ memory-store = ["tower-sessions-memory-store"]
 moka-store = ["tower-sessions-moka-store"]
 redis-store = ["tower-sessions-redis-store"]
 redis-pool-store = ["tower-sessions-redis-pool-store"]
-redis-pool-store2 = ["tower-sessions-redis-pool-store2"]
 mongodb-store = ["tower-sessions-mongodb-store"]
 sqlx-store = []
 sqlite-store = ["sqlx-store", "tower-sessions-sqlx-store/sqlite"]
@@ -70,7 +69,6 @@ tower-sessions-redis-store = { version = "=0.9.1", path = "redis-store" }
 tower-sessions-mongodb-store = { version = "=0.9.1", path = "mongodb-store" }
 tower-sessions-sqlx-store = { version = "=0.9.1", path = "sqlx-store" }
 tower-sessions-redis-pool-store = { version = "=0.9.1", path = "redis-pool-store" }
-tower-sessions-redis-pool-store2 = { version = "=0.9.1", path = "redis-pool-store2" }
 
 async-trait = "0.1.74"
 parking_lot = { version = "0.12.1", features = ["serde"] }
@@ -88,7 +86,6 @@ tower-sessions-redis-store = { workspace = true, optional = true }
 tower-sessions-redis-pool-store = { workspace = true, optional = true }
 tower-sessions-mongodb-store = { workspace = true, optional = true }
 tower-sessions-sqlx-store = { workspace = true, optional = true }
-tower-sessions-redis-pool-store2 = { workspace = true, optional = true }
 
 [dev-dependencies]
 async-trait = "0.1.74"

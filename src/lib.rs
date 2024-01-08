@@ -451,8 +451,6 @@ pub use tower_sessions_mongodb_store::MongoDBStore;
 #[cfg(feature = "redis-pool-store")]
 pub use tower_sessions_redis_pool_store::redis;
 #[cfg(feature = "redis-pool-store")]
-pub use tower_sessions_redis_pool_store::redis_pool;
-#[cfg(feature = "redis-pool-store")]
 #[cfg_attr(docsrs, doc(cfg(feature = "redis-pool-store")))]
 #[doc(inline)]
 pub use tower_sessions_redis_pool_store::RedisPoolStore;

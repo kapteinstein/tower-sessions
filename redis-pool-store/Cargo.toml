@@ -1,5 +1,5 @@
 [package]
-name = "tower-sessions-redis-pool-store2"
+name = "tower-sessions-redis-pool-store"
 description = "Redis session store with pool support. Not for direct use; see the `tower-sessions` crate for details."
 documentation.workspace = true
 version.workspace = true
