@@ -1,5 +1,5 @@
 [package]
-name = "tower-sessions-redis-pool-store"
+name = "tower-sessions-redis-pool-store2"
 description = "Redis session store with pool support. Not for direct use; see the `tower-sessions` crate for details."
 documentation.workspace = true
 version.workspace = true
@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 async-trait = { workspace = true }
-redis = { version = "0.23.3", default_features = false, features = ["aio", "tokio-comp"] }
+redis = { version = "0.23.3", default_features = false, features = ["aio", "tokio-comp", "connection-manager"] }
 rmp-serde = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }

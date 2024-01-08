@@ -1,94 +1,91 @@
 use async_trait::async_trait;
 pub use redis;
-pub use redis_pool;
-use redis_pool::SingleRedisPool;
+use redis::aio::ConnectionManager;
+use std::fmt::{Debug, Formatter};
 use time::OffsetDateTime;
-use tower_sessions_core::{session::Id, Session, SessionStore};
+use tower_sessions_core::session::Record;
+use tower_sessions_core::{session::Id, session_store, SessionStore};
 
-/// An error type for `RedisPoolStore`.
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum RedisStoreError {
-    /// A variant to map to `redis_pool::errors::RedisPoolError` errors.
-    #[error("RedisPool error: {0}")]
-    RedisPool(#[from] redis_pool::errors::RedisPoolError),
-
-    /// A variant to map to `redis::RedisError` errors.
-    #[error("Redis error: {0}")]
+    #[error(transparent)]
     Redis(#[from] redis::RedisError),
 
-    /// A variant to map `rmp_serde` encode errors.
-    #[error("Rust MsgPack encode error: {0}")]
-    RmpSerdeEncode(#[from] rmp_serde::encode::Error),
+    #[error(transparent)]
+    Decode(#[from] rmp_serde::decode::Error),
 
-    /// A variant to map `rmp_serde` decode errors.
-    #[error("Rust MsgPack decode error: {0}")]
-    RmpSerdeDecode(#[from] rmp_serde::decode::Error),
+    #[error(transparent)]
+    Encode(#[from] rmp_serde::encode::Error),
+}
+
+impl From<RedisStoreError> for session_store::Error {
+    fn from(err: RedisStoreError) -> Self {
+        match err {
+            RedisStoreError::Redis(inner) => session_store::Error::Backend(inner.to_string()),
+            RedisStoreError::Decode(inner) => session_store::Error::Decode(inner.to_string()),
+            RedisStoreError::Encode(inner) => session_store::Error::Encode(inner.to_string()),
+        }
+    }
 }
 
 /// A Redis session store.
 #[derive(Clone)]
 pub struct RedisPoolStore {
-    client: SingleRedisPool,
+    client: ConnectionManager,
+}
+
+impl Debug for RedisPoolStore {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "tower-sessions client with Redis ConnectionManager")
+    }
 }
 
 impl RedisPoolStore {
     /// Create a new Redis store with the provided client.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use redis_pool::RedisPool;
-    /// use redis::Client;
-    /// use tower_sessions::RedisPoolStore;
-    ///
-    /// # tokio_test::block_on(async {
-    /// let redis_url = "redis://127.0.0.1:6379";
-    /// let client = redis::Client::open(redis_url).expect("Error while trying to open the redis connection");
-    ///
-    /// let session_store = RedisPoolStore::new(client.into());
-    /// })
-    /// ```
-    pub fn new(client: SingleRedisPool) -> Self {
+    pub fn new(client: ConnectionManager) -> Self {
         Self { client }
     }
 }
 
 #[async_trait]
 impl SessionStore for RedisPoolStore {
-    type Error = RedisStoreError;
-
-    async fn save(&self, session: &Session) -> Result<(), Self::Error> {
-        let expire = OffsetDateTime::unix_timestamp(session.expiry_date());
-        let mut con = self.client.aquire().await?;
+    async fn save(&self, record: &Record) -> session_store::Result<()> {
+        let expire = OffsetDateTime::unix_timestamp(record.expiry_date);
+        let mut con = self.client.clone();
         redis::cmd("SET")
-            .arg(format!("tower_session:{}", session.id()))
-            .arg(rmp_serde::to_vec(&session)?)
+            .arg(format!("tower_session:{}", record.id))
+            .arg(rmp_serde::to_vec(&record).map_err(RedisStoreError::Encode)?)
             .arg("EXAT") // EXAT: set expiry timestamp
             .arg(expire as usize)
             .query_async(&mut con)
-            .await?;
+            .await
+            .map_err(RedisStoreError::Redis)?;
         Ok(())
     }
 
-    async fn load(&self, session_id: &Id) -> Result<Option<Session>, Self::Error> {
-        let mut con = self.client.aquire().await?;
+    async fn load(&self, session_id: &Id) -> session_store::Result<Option<Record>> {
+        let mut con = self.client.clone();
         let data: Option<Vec<u8>> = redis::cmd("GET")
             .arg(format!("tower_session:{}", session_id))
             .query_async(&mut con)
-            .await?;
+            .await
+            .map_err(RedisStoreError::Redis)?;
         if let Some(data) = data {
-            Ok(Some(rmp_serde::from_slice(&data)?))
+            Ok(Some(
+                rmp_serde::from_slice(&data).map_err(RedisStoreError::Decode)?,
+            ))
         } else {
             Ok(None)
         }
     }
 
-    async fn delete(&self, session_id: &Id) -> Result<(), Self::Error> {
-        let mut con = self.client.aquire().await?;
+    async fn delete(&self, session_id: &Id) -> session_store::Result<()> {
+        let mut con = self.client.clone();
         redis::cmd("DEL")
             .arg(format!("tower_session:{}", session_id))
             .query_async(&mut con)
-            .await?;
+            .await
+            .map_err(RedisStoreError::Redis)?;
         Ok(())
     }
 }
