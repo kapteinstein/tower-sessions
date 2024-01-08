@@ -72,7 +72,7 @@ where
 
         self.client
             .set(
-                record.id.to_string(),
+                format!("tower_session:{}", session.id()),
                 rmp_serde::to_vec(&record)
                     .map_err(RedisStoreError::Encode)?
                     .as_slice(),
@@ -89,9 +89,17 @@ where
     async fn load(&self, session_id: &Id) -> session_store::Result<Option<Record>> {
         let data = self
             .client
+<<<<<<< HEAD
             .get::<Option<Vec<u8>>, _>(session_id.to_string())
             .await
             .map_err(RedisStoreError::Redis)?;
+||||||| parent of 23c4192 (add prefix to redis key)
+            .get::<Option<Vec<u8>>, _>(session_id.to_string())
+            .await?;
+=======
+            .get::<Option<Vec<u8>>, _>(format!("tower_session:{}", session_id))
+            .await?;
+>>>>>>> 23c4192 (add prefix to redis key)
 
         if let Some(data) = data {
             Ok(Some(
@@ -102,11 +110,21 @@ where
         }
     }
 
+<<<<<<< HEAD
     async fn delete(&self, session_id: &Id) -> session_store::Result<()> {
         self.client
             .del(session_id.to_string())
             .await
             .map_err(RedisStoreError::Redis)?;
+||||||| parent of 23c4192 (add prefix to redis key)
+    async fn delete(&self, session_id: &Id) -> Result<(), Self::Error> {
+        self.client.del(session_id.to_string()).await?;
+=======
+    async fn delete(&self, session_id: &Id) -> Result<(), Self::Error> {
+        self.client
+            .del(format!("tower_session:{}", session_id))
+            .await?;
+>>>>>>> 23c4192 (add prefix to redis key)
         Ok(())
     }
 }
